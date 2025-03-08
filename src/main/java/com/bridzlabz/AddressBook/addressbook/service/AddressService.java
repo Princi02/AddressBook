@@ -4,6 +4,7 @@ import com.bridzlabz.AddressBook.addressbook.dto.AddressDTO;
 import com.bridzlabz.AddressBook.addressbook.model.Address;
 import com.bridzlabz.AddressBook.addressbook.repository.AddressRepository;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j // Lombok Logging
 public class AddressService {
 
     @Autowired
@@ -24,16 +26,18 @@ public class AddressService {
     public void loadDataFromDatabase() {
         addressList.clear(); // Clear existing data in case of reload
         addressList.addAll(addressRepository.findAll());
-        System.out.println("Loaded " + addressList.size() + " addresses from database.");
+        log.info("Loaded {} addresses from database", addressList.size());
     }
 
     // Get all addresses
     public List<Address> getAllAddresses() {
+        log.debug("Fetching all addresses");
         return addressList;
     }
 
     // Get address by ID
     public Address getAddressById(Long id) {
+        log.debug("Searching for address with ID: {}", id);
         return addressList.stream()
                 .filter(address -> address.getId().equals(id))
                 .findFirst()
@@ -42,6 +46,7 @@ public class AddressService {
 
     // Add new address (Save to DB and In-Memory List)
     public Address addAddress(AddressDTO addressDTO) {
+        log.info("Adding new address: {}", addressDTO);
         Address address = new Address();
         address.setName(addressDTO.getName());
         address.setCity(addressDTO.getCity());
@@ -55,6 +60,7 @@ public class AddressService {
 
     // Update address by ID (Update in DB and In-Memory List)
     public Address updateAddress(Long id, AddressDTO addressDTO) {
+        log.info("Updating address with ID: {}", id);
         Optional<Address> optionalAddress = addressRepository.findById(id);
         if (optionalAddress.isPresent()) {
             Address address = optionalAddress.get();
@@ -67,16 +73,19 @@ public class AddressService {
             addressList.replaceAll(addr -> addr.getId().equals(id) ? updatedAddress : addr); // Update in-memory list
             return updatedAddress;
         }
+        log.warn("Address with ID {} not found for update", id);
         return null;
     }
 
     // Delete address by ID (Remove from DB and In-Memory List)
     public boolean deleteAddress(Long id) {
         if (addressRepository.existsById(id)) {
+            log.warn("Deleting address with ID: {}", id);
             addressRepository.deleteById(id); // Delete from DB
             addressList.removeIf(address -> address.getId().equals(id)); // Remove from in-memory list
             return true;
         }
+        log.error("Attempted to delete non-existent address with ID: {}", id);
         return false;
     }
 }
