@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 @Service
-public class AuthService {
+public class AuthService implements IAuthService {
 
     @Autowired
     private AuthUserRepository userRepository;
@@ -26,7 +26,7 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
-    // User Registration
+    @Override
     public String registerUser(AuthUserDTO userDTO) {
         if (userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
             throw new RuntimeException("Email is already registered");
@@ -48,7 +48,7 @@ public class AuthService {
         return "User registered successfully";
     }
 
-    // User Login
+    @Override
     public String loginUser(LoginDTO loginDTO) {
         AuthUser user = userRepository.findByEmail(loginDTO.getEmail())
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
@@ -57,25 +57,25 @@ public class AuthService {
             throw new RuntimeException("Invalid email or password");
         }
 
-        // Send login notification
+        // ✅ Send login notification
         sendLoginNotification(user.getEmail());
 
         return jwtUtil.generateToken(user.getEmail());
     }
 
-    // Send Login Notification
-    private void sendLoginNotification(String email) {
+    @Override
+    public void sendLoginNotification(String email) {
         emailService.sendSimpleEmail(email,
                 "Login Alert",
                 "You have successfully logged into your account.");
     }
 
-    // Forgot Password
+    @Override
     public String forgotPassword(String email, String newPassword) {
         Optional<AuthUser> userOptional = userRepository.findByEmail(email);
 
         if (userOptional.isEmpty()) {
-            throw new RuntimeException("Sorry! We cannot find the user email: " + email);
+            throw new RuntimeException("User not found");
         }
 
         AuthUser user = userOptional.get();
@@ -84,20 +84,15 @@ public class AuthService {
 
         emailService.sendSimpleEmail(email,
                 "Password Changed",
-                "Your password has been successfully updated.");
+                "Your password has been updated.");
 
-        return "Password has been changed successfully!";
+        return "Password updated successfully";
     }
 
-    // Reset Password
+    @Override
     public String resetPassword(String email, String currentPassword, String newPassword) {
-        Optional<AuthUser> userOptional = userRepository.findByEmail(email);
-
-        if (userOptional.isEmpty()) {
-            throw new RuntimeException("User not found with email: " + email);
-        }
-
-        AuthUser user = userOptional.get();
+        AuthUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new RuntimeException("Current password is incorrect!");
@@ -105,6 +100,10 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+
+        emailService.sendSimpleEmail(email,
+                "Password Reset Confirmation",
+                "Your password has been reset successfully. If you didn't perform this action, please contact support.");
 
         return "Password reset successfully!";
     }
