@@ -23,8 +23,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<String> loginUser(@RequestBody LoginDTO loginDTO) {
         String token = authService.loginUser(loginDTO);
+
         return ResponseEntity.ok("Bearer " + token);
     }
+
+
 
     @PutMapping("/forgotPassword/{email}")
     public ResponseEntity<?> forgotPassword(@PathVariable String email, @RequestBody Map<String, String> request) {
